@@ -13,3 +13,12 @@ File.binwrite("app.opt.mrb", bytes)
 ```
 
 `LVAR` is preserved. `DBG` is rejected until debug PC mappings are rewritten.
+
+## Debug removal
+
+`RiteOpt::Rite::DebugRemoval` removes the `DBG` section and updates the RITE binary size.
+
+```ruby
+bytes = RiteOpt::Rite::DebugRemoval.call(File.binread("app.mrb"))
+File.binwrite("app.opt.mrb", bytes)
+```

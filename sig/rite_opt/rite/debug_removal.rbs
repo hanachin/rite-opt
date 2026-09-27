@@ -1,0 +1,8 @@
+module RiteOpt
+  module Rite
+    class DebugRemoval
+      def self.call: (rite_bytes source) -> rite_bytes
+      def call: () -> rite_bytes
+    end
+  end
+end
