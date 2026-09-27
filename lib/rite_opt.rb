@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "rite_opt/version"
 require_relative "rite_opt/rite/reader"
 require_relative "rite_opt/rite/parser"
 require_relative "rite_opt/rite/opcodes"
