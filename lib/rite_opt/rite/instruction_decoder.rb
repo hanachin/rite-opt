@@ -6,6 +6,10 @@ module RiteOpt
       def nop? = opcode.nop?
       def ext? = opcode.ext?
       def jump? = opcode.jump?
+      def conditional_jump? = opcode.conditional_jump?
+      def unwind_jump? = opcode.unwind_jump?
+      def exit? = opcode.exit?
+      def terminator? = opcode.terminator?
       def next_pc = pc + byte_length
       def target_pc = jump_offset && next_pc + jump_offset
     end

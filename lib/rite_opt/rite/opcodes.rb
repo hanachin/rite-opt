@@ -2,10 +2,22 @@
 
 module RiteOpt
   module Rite
+    CONDITIONAL_JUMP_NAMES = %w[JMPIF JMPNOT JMPNIL].freeze
+    EXIT_NAMES = %w[
+      CALL
+      RETURN RETURN_BLK
+      RETSELF RETNIL RETTRUE RETFALSE
+      BREAK ERR STOP
+    ].freeze
+
     Opcode = Data.define(:code, :name, :format, :base_length, :extension_bytes) do
       def nop? = name == "NOP"
       def ext? = extension_bytes.nonzero?
       def jump? = name.start_with?("JMP")
+      def conditional_jump? = CONDITIONAL_JUMP_NAMES.include?(name)
+      def unwind_jump? = name == "JMPUW"
+      def exit? = EXIT_NAMES.include?(name)
+      def terminator? = jump? || exit?
     end
 
     OPERAND_LENGTHS = {
