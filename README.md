@@ -22,3 +22,12 @@ File.binwrite("app.opt.mrb", bytes)
 bytes = RiteOpt::Rite::DebugRemoval.call(File.binread("app.mrb"))
 File.binwrite("app.opt.mrb", bytes)
 ```
+
+## LVAR removal
+
+`RiteOpt::Rite::LvarRemoval` removes the `LVAR` section and updates the RITE binary size.
+
+```ruby
+bytes = RiteOpt::Rite::LvarRemoval.call(File.binread("app.mrb"))
+File.binwrite("app.opt.mrb", bytes)
+```
