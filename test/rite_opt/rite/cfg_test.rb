@@ -36,6 +36,15 @@ class CFGTest < Minitest::Test
     assert_equal [[3, 4], [4, 5]], block_ranges(cfg.each_reachable_block(3))
   end
 
+  def test_visits_all_blocks_in_reverse_iseq_order
+    # PCs: 0 JMP +1 -> 4; 3 NOP; 4 STOP
+    code = [opcode("JMP"), 0, 1, opcode("NOP"), opcode("STOP")].pack("C*")
+
+    cfg = build_cfg(code)
+
+    assert_equal [[4, 5], [3, 4], [0, 3]], block_ranges(cfg.reverse_each_block)
+  end
+
   def test_keeps_code_after_exit_as_a_separate_unreachable_block
     # PCs: 0 RETURN R1; 2 LOADI_1 R1; 4 RETURN R1
     code = [

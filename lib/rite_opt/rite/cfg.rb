@@ -30,6 +30,12 @@ module RiteOpt
           edges_by_pc.fetch(pc, []).each { |edge| pending << edge.to_pc }
         end
       end
+
+      def reverse_each_block(&block)
+        return enum_for(__method__) unless block
+
+        blocks.reverse_each(&block)
+      end
     end
 
     class CFGBuilder
