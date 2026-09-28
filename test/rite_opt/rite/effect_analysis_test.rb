@@ -14,6 +14,9 @@ class EffectAnalysisTest < Minitest::Test
     assert effect.defines?(2)
     refute effect.defines?(1)
     assert effect.register_assignment_only?
+    assert_equal [:b], effect.use_operands
+    assert_equal({ destination: :a, source: :b }, effect.copy)
+    assert effect.modeled?
   end
 
   def test_load_defines_destination_without_reading_a_register
@@ -62,6 +65,7 @@ class EffectAnalysisTest < Minitest::Test
     assert_equal((1 << 8) - 1, effect.uses)
     assert_equal 0, effect.defs
     refute effect.register_assignment_only?
+    refute effect.modeled?
   end
 
   def test_unknown_instruction_conservatively_reads_every_register
@@ -70,6 +74,8 @@ class EffectAnalysisTest < Minitest::Test
     assert_equal((1 << 8) - 1, effect.uses)
     assert_equal 0, effect.defs
     refute effect.register_assignment_only?
+    assert_empty effect.use_operands
+    refute effect.modeled?
   end
 
   private

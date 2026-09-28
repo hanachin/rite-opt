@@ -2,22 +2,32 @@
 
 module RiteOpt
   module Rite
-    Effect = Data.define(:uses, :defs, :register_assignment_only) do
+    Effect = Data.define(:uses, :defs, :register_assignment_only, :use_operands, :copy, :modeled) do
       def uses?(register) = (uses & (1 << register)) != 0
       def defines?(register) = (defs & (1 << register)) != 0
       def register_assignment_only? = register_assignment_only
+      def modeled? = modeled
     end
 
     # Describes the effects of one instruction that are relevant to analysis.
     #
     # Unknown instructions conservatively read every register and define none.
-    # This lets data-flow analyses start with a small verified opcode set without
-    # treating an unmodelled instruction as proof that an earlier value is dead.
+    # This lets backward liveness analyses start with a small verified opcode set
+    # without treating an unmodelled instruction as proof that an earlier value
+    # is dead. Forward transformations must also check #modeled? because an
+    # unmodelled instruction can still modify registers.
     #
-    # register_assignment_only? is true only when the instruction is known to
-    # have no execution effect other than assigning its destination register.
+    # use_operands identifies explicit register-reading operands that may be
+    # rewritten by transformations such as copy propagation. Implicit reads,
+    # such as RETSELF reading R0, are represented only in +uses+. +copy+ names
+    # the explicit destination and source operands when the instruction is a
+    # register copy.
     class EffectAnalysis
       NONE = 0
+      NO_OPERANDS = [].freeze
+      USE_A = [:a].freeze
+      USE_B = [:b].freeze
+      COPY_A_FROM_B = { destination: :a, source: :b }.freeze
 
       LOAD_NAMES = %w[
         LOADL
@@ -38,7 +48,9 @@ module RiteOpt
           effect(
             uses: register(instruction.b),
             defs: register(instruction.a),
-            register_assignment_only: true
+            use_operands: USE_B,
+            register_assignment_only: true,
+            copy: COPY_A_FROM_B
           )
         when *LOAD_NAMES, "LOADSELF"
           effect(
@@ -47,13 +59,17 @@ module RiteOpt
             register_assignment_only: true
           )
         when *USE_A_NAMES
-          effect(uses: register(instruction.a), defs: NONE)
+          effect(
+            uses: register(instruction.a),
+            defs: NONE,
+            use_operands: USE_A
+          )
         when "RETSELF"
           effect(uses: register(0), defs: NONE)
         when *NO_REGISTER_NAMES
           effect(uses: NONE, defs: NONE)
         else
-          effect(uses: @all_registers, defs: NONE)
+          effect(uses: @all_registers, defs: NONE, modeled: false)
         end
       end
 
@@ -61,8 +77,15 @@ module RiteOpt
 
       def register(index) = 1 << index
 
-      def effect(uses:, defs:, register_assignment_only: false)
-        Effect.new(uses:, defs:, register_assignment_only:)
+      def effect(
+        uses:,
+        defs:,
+        register_assignment_only: false,
+        use_operands: NO_OPERANDS,
+        copy: nil,
+        modeled: true
+      )
+        Effect.new(uses:, defs:, register_assignment_only:, use_operands:, copy:, modeled:)
       end
     end
   end

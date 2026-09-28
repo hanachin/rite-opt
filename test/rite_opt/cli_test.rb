@@ -47,6 +47,38 @@ class RiteOptCliTest < Minitest::Test
     assert_equal [0, 118].pack("C*"), document.bytes(document.sections.first.root.iseq.code_span)
   end
 
+  def test_disables_copy_propagation
+    code = [
+      opcode("MOVE"), 2, 1,
+      opcode("RETURN"), 2
+    ].pack("C*")
+    input = rite(code:, nregs: 3)
+
+    enabled_stdout = StringIO.new(+"".b)
+    disabled_stdout = StringIO.new(+"".b)
+
+    assert_equal 0, RiteOpt::CLI.run(
+      ["--no-nop-removal", "-"],
+      stdin: StringIO.new(input),
+      stdout: enabled_stdout,
+      stderr: StringIO.new
+    )
+    assert_equal 0, RiteOpt::CLI.run(
+      ["--no-copy-propagation", "--no-nop-removal", "-"],
+      stdin: StringIO.new(input),
+      stdout: disabled_stdout,
+      stderr: StringIO.new
+    )
+
+    enabled = RiteOpt::Rite::Parser.parse(enabled_stdout.string)
+    disabled = RiteOpt::Rite::Parser.parse(disabled_stdout.string)
+    enabled_code = enabled.bytes(enabled.sections.first.root.iseq.code_span)
+    disabled_code = disabled.bytes(disabled.sections.first.root.iseq.code_span)
+
+    assert_equal [0, 0, 0, opcode("RETURN"), 1].pack("C*"), enabled_code
+    assert_equal code, disabled_code
+  end
+
   def test_disables_dead_store_elimination
     code = [opcode("LOADI_1"), 1, opcode("RETNIL")].pack("C*")
     input = rite(code:, nregs: 2)

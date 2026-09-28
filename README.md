@@ -7,8 +7,9 @@ The `rite-opt` command runs these passes by default, in this order:
 1. `DebugRemoval`
 2. `LvarRemoval`
 3. `UnreachableCodeElimination`
-4. `DeadStoreElimination`
-5. `NopRemoval`
+4. `CopyPropagation`
+5. `DeadStoreElimination`
+6. `NopRemoval`
 
 ## CLI
 
@@ -24,6 +25,7 @@ Disable individual passes when needed:
 rite-opt --no-debug-removal app.mrb
 rite-opt --no-lvar-removal app.mrb
 rite-opt --no-unreachable-code-elimination app.mrb
+rite-opt --no-copy-propagation app.mrb
 rite-opt --no-dead-store-elimination app.mrb
 rite-opt --no-nop-removal app.mrb
 ```
@@ -72,9 +74,10 @@ bytes = File.binread("app.mrb")
 bytes = RiteOpt::Rite::DebugRemoval.call(bytes)
 bytes = RiteOpt::Rite::LvarRemoval.call(bytes)
 bytes = RiteOpt::Rite::UnreachableCodeElimination.call(bytes)
+bytes = RiteOpt::Rite::CopyPropagation.call(bytes)
 bytes = RiteOpt::Rite::DeadStoreElimination.call(bytes)
 bytes = RiteOpt::Rite::NopRemoval.call(bytes)
 File.binwrite("app.opt.mrb", bytes)
 ```
 
-`UnreachableCodeElimination` and `DeadStoreElimination` support RITE0400. They preserve PCs and record sizes by replacing removed instructions with NOP bytes. `DeadStoreElimination` currently removes dead `MOVE` and side-effect-free `LOAD*` stores. `NopRemoval` then compacts those NOPs, rewrites branch and catch positions, and rebuilds affected sizes. `LVAR` is position-independent. `DBG` must be removed before NOP removal because its PC mappings are not rewritten.
+`UnreachableCodeElimination`, `CopyPropagation`, and `DeadStoreElimination` support RITE0400. `CopyPropagation` rewrites register uses only inside one basic block and preserves PCs and record sizes. It treats unmodelled instructions as barriers and skips replacements that would change EXT width. `UnreachableCodeElimination` and `DeadStoreElimination` preserve PCs and record sizes by replacing removed instructions with NOP bytes. `DeadStoreElimination` currently removes dead `MOVE` and side-effect-free `LOAD*` stores. `NopRemoval` then compacts those NOPs, rewrites branch and catch positions, and rebuilds affected sizes. `LVAR` is position-independent. `DBG` must be removed before NOP removal because its PC mappings are not rewritten.

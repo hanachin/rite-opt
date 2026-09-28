@@ -22,9 +22,19 @@ module RiteOpt
       def exit? = opcode.exit?
       def terminator? = opcode.terminator?
 
-      def a = operands[0]
-      def b = operands[1]
-      def c = operands[2]
+      OPERAND_INDEX = { a: 0, b: 1, c: 2 }.freeze
+
+      def a = operand(:a)
+      def b = operand(:b)
+      def c = operand(:c)
+
+      def operand(name) = operands[OPERAND_INDEX.fetch(name)]
+
+      def with_operand(name, value)
+        rewritten_operands = operands.dup
+        rewritten_operands[OPERAND_INDEX.fetch(name)] = value
+        with(operands: rewritten_operands.freeze, rite_extension:)
+      end
 
       def pc = source_span.offset
       def next_pc = source_span.end_offset
@@ -40,6 +50,8 @@ module RiteOpt
       def rite_byte_length
         opcode.byte_length(extension: rite_extension) + (rite_extension ? OPCODE_WIDTH : 0)
       end
+
+      def in_place? = rite_byte_length == source_span.length
 
       # Encodes one logical instruction as RITE0400 bytes, preserving the
       # decoded EXT prefix when it can still represent the operands.
