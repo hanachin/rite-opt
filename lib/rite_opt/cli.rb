@@ -9,6 +9,7 @@ module RiteOpt
       [:debug_removal, Rite::DebugRemoval],
       [:lvar_removal, Rite::LvarRemoval],
       [:unreachable_code_elimination, Rite::UnreachableCodeElimination],
+      [:dead_store_elimination, Rite::DeadStoreElimination],
       [:nop_removal, Rite::NopRemoval]
     ].freeze
 
@@ -52,6 +53,7 @@ module RiteOpt
         debug_removal: true,
         lvar_removal: true,
         unreachable_code_elimination: true,
+        dead_store_elimination: true,
         nop_removal: true,
         output: nil,
         help: false,
@@ -74,6 +76,9 @@ module RiteOpt
         end
         parser.on("--no-unreachable-code-elimination", "Disable unreachable code elimination") do
           options[:unreachable_code_elimination] = false
+        end
+        parser.on("--no-dead-store-elimination", "Disable dead store elimination") do
+          options[:dead_store_elimination] = false
         end
         parser.on("--no-nop-removal", "Disable NOP removal") do
           options[:nop_removal] = false

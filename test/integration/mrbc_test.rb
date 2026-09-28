@@ -75,6 +75,42 @@ class MrbcIntegrationTest < Minitest::Test
     assert_equal before_execution, execute(optimized)
   end
 
+  def test_dead_store_elimination_marks_real_mrbc_dead_store_as_nops
+    source = compile("dead_store.rb")
+    before = parse(source)
+    before_root = root_irep(before)
+    before_nops = instructions(before, before_root).count(&:nop?)
+    before_execution = execute(source)
+    assert_equal ["2\n", ""], before_execution
+
+    eliminated = RiteOpt::Rite::DeadStoreElimination.call(source)
+    after_elimination = parse(eliminated)
+    eliminated_root = root_irep(after_elimination)
+
+    assert_equal source.bytesize, eliminated.bytesize
+    assert_operator instructions(after_elimination, eliminated_root).count(&:nop?), :>, before_nops
+    assert_equal before_execution, execute(eliminated)
+
+    optimized = RiteOpt::Rite::NopRemoval.call(eliminated)
+
+    assert_operator optimized.bytesize, :<, source.bytesize
+    assert_equal before_execution, execute(optimized)
+  end
+
+  def test_dead_store_cli_flag_changes_output_but_not_behavior
+    source = compile("dead_store.rb")
+    expected = execute(source)
+
+    optimized = optimize_with_cli(source)
+    disabled = optimize_with_cli(source, "--no-dead-store-elimination")
+
+    assert_equal ["2\n", ""], expected
+    assert_equal expected, execute(optimized)
+    assert_equal expected, execute(disabled)
+    refute_equal disabled, optimized
+    assert_operator optimized.bytesize, :<, disabled.bytesize
+  end
+
   def test_nop_removal_relocates_real_mrbc_control_flow
     source = compile("control_flow.rb")
     before = parse(source)
@@ -164,14 +200,14 @@ class MrbcIntegrationTest < Minitest::Test
     end
   end
 
-  def optimize_with_cli(bytes)
+  def optimize_with_cli(bytes, *options)
     Dir.mktmpdir("rite-opt-cli") do |directory|
       input = File.join(directory, "program.mrb")
       output = File.join(directory, "program.opt.mrb")
       File.binwrite(input, bytes)
 
       stdout, stderr, status = Open3.capture3(
-        RbConfig.ruby, EXECUTABLE, "-o", output, input
+        RbConfig.ruby, EXECUTABLE, *options, "-o", output, input
       )
       assert status.success?, "rite-opt failed:\n#{stdout}#{stderr}"
       return File.binread(output)
