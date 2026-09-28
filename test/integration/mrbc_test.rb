@@ -46,6 +46,35 @@ class MrbcIntegrationTest < Minitest::Test
     assert_equal execute(source), execute(optimized)
   end
 
+  def test_unreachable_code_elimination_marks_real_mrbc_dead_block_as_nops
+    source = compile("unreachable.rb")
+    before = parse(source)
+    method_irep = root_irep(before).children.fetch(0)
+    before_instructions = instructions(before, method_irep)
+    cfg = RiteOpt::Rite::CFGBuilder.build(
+      before_instructions,
+      catch_handlers: method_irep.iseq.catch_handlers
+    )
+
+    reachable = cfg.each_reachable_block(0).to_h { |block| [block.start_pc, true] }
+    assert cfg.blocks.any? { |block| !reachable.key?(block.start_pc) }
+    before_execution = execute(source)
+    assert_equal ["42\n", ""], before_execution
+
+    eliminated = RiteOpt::Rite::UnreachableCodeElimination.call(source)
+    after_elimination = parse(eliminated)
+    eliminated_method = root_irep(after_elimination).children.fetch(0)
+
+    assert_equal source.bytesize, eliminated.bytesize
+    assert_operator instructions(after_elimination, eliminated_method).count(&:nop?), :>, 0
+    assert_equal before_execution, execute(eliminated)
+
+    optimized = RiteOpt::Rite::NopRemoval.call(eliminated)
+
+    assert_operator optimized.bytesize, :<, source.bytesize
+    assert_equal before_execution, execute(optimized)
+  end
+
   def test_nop_removal_relocates_real_mrbc_control_flow
     source = compile("control_flow.rb")
     before = parse(source)

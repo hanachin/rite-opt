@@ -6,7 +6,8 @@ The `rite-opt` command runs these passes by default, in this order:
 
 1. `DebugRemoval`
 2. `LvarRemoval`
-3. `NopRemoval`
+3. `UnreachableCodeElimination`
+4. `NopRemoval`
 
 ## CLI
 
@@ -21,6 +22,7 @@ Disable individual passes when needed:
 ```sh
 rite-opt --no-debug-removal app.mrb
 rite-opt --no-lvar-removal app.mrb
+rite-opt --no-unreachable-code-elimination app.mrb
 rite-opt --no-nop-removal app.mrb
 ```
 
@@ -53,7 +55,7 @@ mruby --version
 ./exe/rite-opt app.mrb > app.opt.mrb
 ```
 
-The development shell includes Ruby 4.0, `mrbc`, and `mruby`. `nix flake check` runs the unit tests and the mrbc integration tests. The integration tests compile real RITE0400 binaries and verify Debug, LVAR, and NOP removal, including jump and catch-table relocation.
+The development shell includes Ruby 4.0, `mrbc`, and `mruby`. `nix flake check` runs the unit tests and the mrbc integration tests. The integration tests compile real RITE0400 binaries and verify Debug, LVAR, unreachable-code, and NOP elimination, including jump and catch-table relocation.
 
 `flake.lock` is intentionally not included yet.
 
@@ -67,8 +69,9 @@ require "rite_opt"
 bytes = File.binread("app.mrb")
 bytes = RiteOpt::Rite::DebugRemoval.call(bytes)
 bytes = RiteOpt::Rite::LvarRemoval.call(bytes)
+bytes = RiteOpt::Rite::UnreachableCodeElimination.call(bytes)
 bytes = RiteOpt::Rite::NopRemoval.call(bytes)
 File.binwrite("app.opt.mrb", bytes)
 ```
 
-`NopRemoval` supports RITE0400. It rewrites branch and catch positions and rebuilds affected sizes. `LVAR` is position-independent. `DBG` must be removed before NOP removal because its PC mappings are not rewritten.
+`UnreachableCodeElimination` supports RITE0400. It preserves PCs and record sizes by replacing unreachable basic blocks with NOP bytes. `NopRemoval` then compacts those NOPs, rewrites branch and catch positions, and rebuilds affected sizes. `LVAR` is position-independent. `DBG` must be removed before NOP removal because its PC mappings are not rewritten.

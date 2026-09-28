@@ -4,11 +4,33 @@ module RiteOpt
   module Rite
     BasicBlock = Data.define(:start_pc, :end_pc) do
       def cover?(pc) = start_pc <= pc && pc < end_pc
+      def length = end_pc - start_pc
     end
 
     Edge = Data.define(:from_pc, :to_pc, :kind)
 
-    CFG = Data.define(:blocks, :edges)
+    CFG = Data.define(:blocks, :edges) do
+      def each_reachable_block(start_pc)
+        return enum_for(__method__, start_pc) unless block_given?
+
+        blocks_by_pc = blocks.to_h { |block| [block.start_pc, block] }
+        edges_by_pc = edges.group_by(&:from_pc)
+        visited = {}
+        pending = [start_pc]
+
+        until pending.empty?
+          pc = pending.pop
+          next if visited.key?(pc)
+
+          block = blocks_by_pc[pc]
+          next unless block
+
+          visited[pc] = true
+          yield block
+          edges_by_pc.fetch(pc, []).each { |edge| pending << edge.to_pc }
+        end
+      end
+    end
 
     class CFGBuilder
       def self.build(instructions, catch_handlers:)

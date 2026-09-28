@@ -26,6 +26,16 @@ class CFGTest < Minitest::Test
     ], edge_rows(cfg)
   end
 
+  def test_finds_blocks_reachable_from_given_pc
+    # PCs: 0 JMP +1 -> 4; 3 NOP; 4 STOP
+    code = [opcode("JMP"), 0, 1, opcode("NOP"), opcode("STOP")].pack("C*")
+
+    cfg = build_cfg(code)
+
+    assert_equal [[0, 3], [4, 5]], block_ranges(cfg.each_reachable_block(0))
+    assert_equal [[3, 4], [4, 5]], block_ranges(cfg.each_reachable_block(3))
+  end
+
   def test_keeps_code_after_exit_as_a_separate_unreachable_block
     # PCs: 0 RETURN R1; 2 LOADI_1 R1; 4 RETURN R1
     code = [
@@ -37,6 +47,7 @@ class CFGTest < Minitest::Test
     cfg = build_cfg(code)
 
     assert_equal [[0, 2], [2, 6]], block_ranges(cfg)
+    assert_equal [[0, 2]], block_ranges(cfg.each_reachable_block(0))
     assert_empty cfg.edges
   end
 
@@ -85,8 +96,9 @@ class CFGTest < Minitest::Test
     RiteOpt::Rite::CFGBuilder.build(instructions, catch_handlers:)
   end
 
-  def block_ranges(cfg)
-    cfg.blocks.map { |block| [block.start_pc, block.end_pc] }
+  def block_ranges(blocks_or_cfg)
+    blocks = blocks_or_cfg.respond_to?(:blocks) ? blocks_or_cfg.blocks : blocks_or_cfg
+    blocks.map { |block| [block.start_pc, block.end_pc] }
   end
 
   def edge_rows(cfg)
