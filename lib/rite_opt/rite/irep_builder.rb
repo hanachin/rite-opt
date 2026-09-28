@@ -4,20 +4,22 @@ module RiteOpt
   module Rite
     # Mutable editing state for one parsed IREP tree.
     #
-    # The parsed IREP remains the source of lossless bytes. Only instructions are
-    # mutable. #build derives PC relocation, catch positions, ISEQ length, and
-    # record sizes from the edited instruction lists.
+    # The parsed IREP remains the source of lossless non-instruction bytes. Only
+    # instructions are mutable. #build derives PC relocation, catch positions,
+    # ISEQ length, and record sizes from the edited logical instruction lists.
     InstructionPlacement = Data.define(:instruction, :pc) do
       JUMP_OFFSET_LENGTH = 2
 
-      def old_jump_offset_span = jump_offset_span(instruction.pc)
-      def new_jump_offset_span = jump_offset_span(pc)
-
-      private
-
-      def jump_offset_span(at)
+      def old_jump_offset_span
         Span.new(
-          offset: at + instruction.byte_length - JUMP_OFFSET_LENGTH,
+          offset: instruction.next_pc - JUMP_OFFSET_LENGTH,
+          length: JUMP_OFFSET_LENGTH
+        )
+      end
+
+      def new_jump_offset_span
+        Span.new(
+          offset: pc + instruction.rite_byte_length - JUMP_OFFSET_LENGTH,
           length: JUMP_OFFSET_LENGTH
         )
       end
@@ -99,8 +101,9 @@ module RiteOpt
           pc_map[instruction.pc] = code.bytesize
           next unless kept.key?(instruction.pc)
 
+          encoded = instruction.to_rite
           new_pc = code.bytesize
-          code << @original_code.byteslice(instruction.pc, instruction.byte_length)
+          code << encoded
           placements << InstructionPlacement.new(instruction:, pc: new_pc)
         end
         pc_map[@original_code.bytesize] = code.bytesize
@@ -114,7 +117,7 @@ module RiteOpt
           next unless instruction.jump?
 
           new_target = relocate_pc(layout.pc_map, instruction.target_pc)
-          new_offset = new_target - (placement.pc + instruction.byte_length)
+          new_offset = new_target - (placement.pc + instruction.rite_byte_length)
 
           unless (-32_768..32_767).cover?(new_offset)
             raise UnsupportedRewrite, "jump offset overflow after IREP rewrite"
@@ -151,8 +154,6 @@ module RiteOpt
         raise UnsupportedRewrite,
               "PC #{pc} is not an instruction boundary (ISEQ size #{@original_code.bytesize})"
       end
-
-      def original_code_bytes(span) = @original_code.byteslice(span.offset, span.length)
 
       def raw(span) = @document.bytes(span)
     end

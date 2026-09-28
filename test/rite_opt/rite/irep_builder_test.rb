@@ -12,11 +12,11 @@ class IrepBuilderTest < Minitest::Test
     opcodes = RiteOpt::Rite::OPCODES.to_h { |opcode| [opcode.name, opcode] }
     ext1 = opcodes.fetch("EXT1")
     jmpif = opcodes.fetch("JMPIF")
-    code = [ext1.code, jmpif.code, 0, 1, 0, 2].pack("C*")
-    instruction = RiteOpt::Rite::InstructionDecoder.decode(code).last
+    code = [ext1.code, jmpif.code, 1, 44, 0, 2].pack("C*")
+    instruction = RiteOpt::Rite::InstructionDecoder.decode(code).fetch(0)
     placement = RiteOpt::Rite::InstructionPlacement.new(instruction:, pc: 10)
 
     assert_equal RiteOpt::Rite::Span.new(offset: 4, length: 2), placement.old_jump_offset_span
-    assert_equal RiteOpt::Rite::Span.new(offset: 13, length: 2), placement.new_jump_offset_span
+    assert_equal RiteOpt::Rite::Span.new(offset: 14, length: 2), placement.new_jump_offset_span
   end
 end

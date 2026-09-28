@@ -35,15 +35,15 @@ class NopRemovalTest < Minitest::Test
     jmpif = opcodes.fetch("JMPIF")
     stop = opcodes.fetch("STOP")
 
-    # old PCs: 0 NOP, 1 EXT1, 2 JMPIF(+1 -> 8), 7 NOP, 8 STOP
-    code = [0, ext1.code, jmpif.code, 0, 1, 0, 1, 0, stop.code].pack("C*")
+    # old PCs: 0 NOP, 1 EXT1, 2 JMPIF R300,(+1 -> 8), 7 NOP, 8 STOP
+    code = [0, ext1.code, jmpif.code, 1, 44, 0, 1, 0, stop.code].pack("C*")
     input = rite(code:)
 
     result = RiteOpt::Rite::NopRemoval.call(input)
     document = RiteOpt::Rite::Parser.parse(result)
     rewritten_code = document.bytes(document.sections.first.root.iseq.code_span)
 
-    assert_equal [ext1.code, jmpif.code, 0, 1, 0, 0, stop.code].pack("C*"), rewritten_code
+    assert_equal [ext1.code, jmpif.code, 1, 44, 0, 0, stop.code].pack("C*"), rewritten_code
   end
 
   def test_is_idempotent

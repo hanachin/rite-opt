@@ -10,26 +10,54 @@ module RiteOpt
       BREAK ERR STOP
     ].freeze
 
-    Opcode = Data.define(:code, :name, :format, :base_length, :extension_bytes) do
+    OPCODE_WIDTH = 1
+    OPERAND_WIDTHS = {
+      "B" => 1,
+      "S" => 2,
+      "W" => 3
+    }.freeze
+
+    Opcode = Data.define(:code, :name, :format) do
       def nop? = name == "NOP"
-      def ext? = extension_bytes.nonzero?
+      def ext? = name.start_with?("EXT")
       def jump? = name.start_with?("JMP")
       def conditional_jump? = CONDITIONAL_JUMP_NAMES.include?(name)
       def unwind_jump? = name == "JMPUW"
       def exit? = EXIT_NAMES.include?(name)
       def terminator? = jump? || exit?
-    end
 
-    OPERAND_LENGTHS = {
-      "Z" => 1,
-      "B" => 2,
-      "BB" => 3,
-      "BBB" => 4,
-      "BS" => 4,
-      "BSS" => 6,
-      "S" => 3,
-      "W" => 4
-    }.freeze
+      def operand_count = format == "Z" ? 0 : format.length
+
+      def operand_width(index, extension: nil)
+        kind = format[index]
+        width = OPERAND_WIDTHS.fetch(kind)
+        width += extension.extension_width(index) if kind == "B" && extension
+        width
+      end
+
+      def operand_offset(index, extension: nil)
+        OPCODE_WIDTH + index.times.sum { |operand_index| operand_width(operand_index, extension:) }
+      end
+
+      def base_length = byte_length
+
+      def byte_length(extension: nil)
+        OPCODE_WIDTH + operand_count.times.sum { |index| operand_width(index, extension:) }
+      end
+
+      def extension_width(index)
+        case name
+        when "EXT1"
+          index.zero? ? 1 : 0
+        when "EXT2"
+          index == 1 ? 1 : 0
+        when "EXT3"
+          index < 2 ? 1 : 0
+        else
+          0
+        end
+      end
+    end
 
     # RITE0400 opcode order and operand formats.
     OPCODES = [
@@ -64,22 +92,10 @@ module RiteOpt
       ["TCLASS", "B"], ["DEBUG", "BBB"], ["ERR", "B"], ["EXT1", "Z"],
       ["EXT2", "Z"], ["EXT3", "Z"], ["STOP", "Z"]
     ].each_with_index.map do |(name, format), code|
-      extension_bytes =
-        case name
-        when "EXT1", "EXT2" then 1
-        when "EXT3" then 2
-        else 0
-        end
-
-      Opcode.new(
-        code:,
-        name:,
-        format:,
-        base_length: OPERAND_LENGTHS.fetch(format),
-        extension_bytes:
-      )
+      Opcode.new(code:, name:, format:)
     end.freeze
 
     OPCODE_BY_CODE = OPCODES.to_h { |opcode| [opcode.code, opcode] }.freeze
+    OPCODE_BY_NAME = OPCODES.to_h { |opcode| [opcode.name, opcode] }.freeze
   end
 end
