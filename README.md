@@ -37,7 +37,7 @@ rite-opt --no-nop-removal app.mrb
 RiteOpt has a gemspec, so a GitHub repository can be used directly from a Gemfile:
 
 ```ruby
-gem "rite_opt", github: "<owner>/rite_opt"
+gem "rite_opt", github: "hanachin/rite_opt"
 ```
 
 Then run:
@@ -61,8 +61,6 @@ mruby --version
 
 The development shell includes Ruby 4.0, `mrbc`, and `mruby`. `nix flake check` runs the unit tests and the mrbc integration tests. The integration tests compile real RITE0400 binaries and verify Debug, LVAR, unreachable-code, dead-store, and NOP elimination, including jump and catch-table relocation.
 
-`flake.lock` is intentionally not included yet.
-
 ## Ruby API
 
 Each optimization pass is also available separately:
@@ -81,3 +79,9 @@ File.binwrite("app.opt.mrb", bytes)
 ```
 
 `UnreachableCodeElimination`, `CopyPropagation`, and `DeadStoreElimination` support RITE0400. `CopyPropagation` rewrites register uses only inside one basic block and preserves PCs and record sizes. It treats unmodelled instructions as barriers and skips replacements that would change EXT width. `UnreachableCodeElimination` and `DeadStoreElimination` preserve PCs and record sizes by replacing removed instructions with NOP bytes. `DeadStoreElimination` currently removes dead `MOVE` and side-effect-free `LOAD*` stores. `NopRemoval` then compacts those NOPs, rewrites branch and catch positions, and rebuilds affected sizes. `LVAR` is position-independent. `DBG` must be removed before NOP removal because its PC mappings are not rewritten.
+
+## License
+
+MIT License. See [`LICENSE`](LICENSE).
+
+Third-party notices are listed in [`THIRD_PARTY_LICENSES`](THIRD_PARTY_LICENSES).
